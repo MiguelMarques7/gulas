@@ -1,0 +1,189 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { Product } from '@/types/restaurant';
+import { formatCurrency } from '@/data/mockRestaurant';
+import { useCart } from '@/context/CartContext';
+import { X, Plus, Minus, AlertCircle, Info, Clock } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
+
+interface ProductDetailModalProps {
+  product: Product | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
+  product,
+  isOpen,
+  onClose,
+}) => {
+  const { addItem, items } = useCart();
+  const [quantity, setQuantity] = useState(1);
+  const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    if (product) {
+      const existing = items.find((i) => i.product.id === product.id);
+      setQuantity(existing ? existing.quantity : 1);
+      setNotes(existing?.notes || '');
+    }
+  }, [product, items, isOpen]);
+
+  if (!isOpen || !product) return null;
+
+  const handleAddToCart = () => {
+    addItem(product, quantity, notes.trim() || undefined);
+    onClose();
+  };
+
+  const totalPrice = product.price * quantity;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div
+        className="relative w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in slide-in-from-bottom duration-250 border border-zinc-200/80"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-3.5 right-3.5 z-20 w-8 h-8 rounded-full bg-white/90 backdrop-blur-md text-zinc-700 hover:text-black border border-zinc-200 flex items-center justify-center transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+          aria-label="Fechar"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        {/* Hero Image (if available) */}
+        {product.imageUrl && (
+          <div className="relative h-48 sm:h-56 w-full bg-zinc-100 shrink-0">
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              priority
+              sizes="(max-width: 640px) 100vw, 512px"
+              className="object-cover"
+            />
+          </div>
+        )}
+
+        {/* Scrollable Content */}
+        <div className="p-5 overflow-y-auto space-y-3.5 flex-1">
+          {/* Badges */}
+          {((product.badges && product.badges.length > 0) || product.unitQuantity || product.prepTimeMinutes) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {product.badges?.map((badgeKey) => (
+                <Badge key={badgeKey} badgeType={badgeKey} size="md" />
+              ))}
+              {product.unitQuantity && (
+                <span className="text-xs text-zinc-600 font-semibold px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200">
+                  {product.unitQuantity}
+                </span>
+              )}
+              {product.prepTimeMinutes && (
+                <span className="inline-flex items-center gap-1 text-xs text-zinc-500 font-medium">
+                  <Clock className="w-3 h-3" />
+                  {product.prepTimeMinutes} min
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Title & Price */}
+          <div className="flex items-start justify-between gap-3 pt-1">
+            <h2 className="text-lg sm:text-xl font-black text-[#141619] tracking-tight">
+              {product.name}
+            </h2>
+            <span className="text-lg sm:text-xl font-black text-[#15803D] shrink-0">
+              {formatCurrency(product.price)}
+            </span>
+          </div>
+
+          {/* Full description */}
+          <p className="text-xs sm:text-sm text-zinc-600 font-normal leading-relaxed">
+            {product.description}
+          </p>
+
+          {/* Included sides note */}
+          {product.includesNotes && (
+            <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center gap-2 text-xs text-emerald-800 font-semibold">
+              <Info className="w-4 h-4 text-emerald-700 shrink-0" />
+              <span>{product.includesNotes}</span>
+            </div>
+          )}
+
+          {/* Customization Note */}
+          {product.customizationNote && (
+            <div className="p-2.5 rounded-xl bg-zinc-50 border border-zinc-200 flex items-center gap-2 text-xs text-zinc-600">
+              <Info className="w-4 h-4 text-zinc-400 shrink-0" />
+              <span>{product.customizationNote}</span>
+            </div>
+          )}
+
+          {/* Allergens warning */}
+          {product.allergens && product.allergens.length > 0 && (
+            <div className="p-2.5 rounded-xl bg-zinc-50 border border-zinc-200 flex items-start gap-2 text-xs text-zinc-600">
+              <AlertCircle className="w-3.5 h-3.5 text-zinc-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-zinc-800">Alergénios: </span>
+                <span>{product.allergens.join(', ')}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Special instructions */}
+          <div className="space-y-1 pt-1">
+            <label htmlFor="product-notes" className="text-xs font-bold text-[#141619] block">
+              Observações (opcional)
+            </label>
+            <textarea
+              id="product-notes"
+              rows={2}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Ex: sem cebola, sem molho picante, bem passado..."
+              className="w-full px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs sm:text-sm text-[#141619] placeholder-zinc-400 focus:outline-none focus:border-[#15803D] focus:bg-white transition-colors resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="p-4 bg-zinc-50 border-t border-zinc-200/80 flex items-center justify-between gap-3">
+          {/* Quantity Controls */}
+          <div className="flex items-center gap-2 bg-white border border-zinc-200 rounded-xl p-1 shrink-0 shadow-2xs">
+            <button
+              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              disabled={quantity <= 1}
+              className="w-7 h-7 rounded-lg bg-zinc-100 hover:bg-zinc-200 disabled:opacity-40 text-zinc-800 flex items-center justify-center transition-colors active:scale-90 cursor-pointer"
+              aria-label="Diminuir"
+            >
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-xs sm:text-sm font-bold text-[#141619] w-5 text-center">
+              {quantity}
+            </span>
+            <button
+              onClick={() => setQuantity((q) => q + 1)}
+              className="w-7 h-7 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-800 flex items-center justify-center transition-colors active:scale-90 cursor-pointer"
+              aria-label="Aumentar"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Add to Cart Button */}
+          <button
+            onClick={handleAddToCart}
+            disabled={!product.available}
+            className="flex-1 py-2.5 px-4 rounded-xl bg-[#15803D] hover:bg-[#166534] disabled:bg-zinc-200 text-white disabled:text-zinc-400 font-bold text-xs sm:text-sm flex items-center justify-between transition-all shadow-xs active:scale-[0.99] cursor-pointer"
+          >
+            <span>Adicionar ao pedido</span>
+            <span>{formatCurrency(totalPrice)}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

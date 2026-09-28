@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+:root {
+  /* Gulas Brand Colors */
+  --gulas-green: #15803d;         /* Vibrant gastronomic forest green */
+  --gulas-green-hover: #166534;   /* Darker shade for active/hover */
+  --gulas-green-subtle: #f0fdf4;  /* Light green tint for badges & subtle highlights */
+  --gulas-green-border: #bbf7d0;  /* Subtle green border */
+
+  --gulas-dark: #141619;          /* Deep rich charcoal for typography & accents */
+  --gulas-dark-secondary: #272a30;/* Secondary dark tone */
+
+  --gulas-cream: #faf8f5;         /* Warm appetizing off-white background */
+  --gulas-white: #ffffff;         /* Pure white for product cards & modals */
+
+  /* Neutral palette */
+  --gulas-gray-100: #f4f4f5;
+  --gulas-gray-200: #e4e4e7;
+  --gulas-gray-300: #d4d4d8;
+  --gulas-gray-400: #a1a1aa;
+  --gulas-gray-500: #71717a;
+  --gulas-gray-700: #3f3f46;
+  --gulas-gray-900: #18181b;
+
+  /* Border Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 9999px;
+
+  /* Baseline */
+  --background: var(--gulas-cream);
+  --foreground: var(--gulas-dark);
+}
+
+@theme inline {
+  --color-gulas-green: var(--gulas-green);
+  --color-gulas-green-hover: var(--gulas-green-hover);
+  --color-gulas-green-subtle: var(--gulas-green-subtle);
+  --color-gulas-green-border: var(--gulas-green-border);
+
+  --color-gulas-dark: var(--gulas-dark);
+  --color-gulas-dark-secondary: var(--gulas-dark-secondary);
+
+  --color-gulas-cream: var(--gulas-cream);
+  --color-gulas-white: var(--gulas-white);
+
+  --color-gulas-gray-100: var(--gulas-gray-100);
+  --color-gulas-gray-200: var(--gulas-gray-200);
+  --color-gulas-gray-300: var(--gulas-gray-300);
+  --color-gulas-gray-400: var(--gulas-gray-400);
+  --color-gulas-gray-500: var(--gulas-gray-500);
+  --color-gulas-gray-700: var(--gulas-gray-700);
+  --color-gulas-gray-900: var(--gulas-gray-900);
+}
+
+@layer utilities {
+  /* Hide scrollbar for clean horizontal menu scroll */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--gulas-cream);
+  color: var(--gulas-dark);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
