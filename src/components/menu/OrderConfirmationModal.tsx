@@ -45,7 +45,7 @@ export const OrderConfirmationModal: React.FC = () => {
             Pedido Confirmado!
           </h2>
           <p className="text-xs text-zinc-500 max-w-xs mx-auto">
-            O teu pedido foi enviado para a cozinha do {mockRestaurant.name} ({mockRestaurant.location}).
+            O teu pedido foi enviado para a cozinha do {activeOrder.restaurantName || mockRestaurant.name}.
           </p>
         </div>
 
@@ -55,14 +55,14 @@ export const OrderConfirmationModal: React.FC = () => {
             <div>
               <span className="text-zinc-500 block text-[10px]">Identificador</span>
               <span className="text-xs font-black text-[#15803D]">
-                #{activeOrder.id.replace('ord_', '')}
+                #{activeOrder.orderNumber !== undefined ? activeOrder.orderNumber : activeOrder.id.replace('ord_', '')}
               </span>
             </div>
             <div className="text-right">
               <span className="text-zinc-500 block text-[10px]">Mesa</span>
               <span className="text-xs font-bold text-[#141619] flex items-center gap-1 justify-end">
                 <UtensilsCrossed className="w-3 h-3 text-[#15803D]" />
-                Mesa {activeOrder.tableNumber}
+                {activeOrder.tableName || `Mesa ${activeOrder.tableNumber}`}
               </span>
             </div>
           </div>

@@ -20,15 +20,16 @@ export const CartDrawer: React.FC = () => {
     setSelectedTableNumber,
     isTableLocked,
     submitOrder,
+    isSubmitting,
   } = useCart();
 
   const [orderNotes, setOrderNotes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isCartOpen) return null;
 
   const handleConfirmOrder = async () => {
+    if (isSubmitting) return;
     if (items.length === 0) return;
     if (!selectedTableNumber) {
       setErrorMessage('Por favor escolhe a mesa onde estás sentado.');
@@ -36,7 +37,6 @@ export const CartDrawer: React.FC = () => {
     }
 
     setErrorMessage(null);
-    setIsSubmitting(true);
     try {
       await submitOrder(orderNotes.trim() || undefined);
     } catch (err: unknown) {
@@ -45,8 +45,6 @@ export const CartDrawer: React.FC = () => {
       } else {
         setErrorMessage('Ocorreu um erro ao submeter o pedido.');
       }
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -209,6 +207,7 @@ export const CartDrawer: React.FC = () => {
               <input
                 id="general-order-notes"
                 type="text"
+                maxLength={1000}
                 value={orderNotes}
                 onChange={(e) => setOrderNotes(e.target.value)}
                 placeholder="Ex: trazer tudo junto, conta separada..."

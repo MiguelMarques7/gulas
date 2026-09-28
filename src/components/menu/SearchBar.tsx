@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Search, X, Flame, Sparkles, Leaf, Zap } from 'lucide-react';
+import { Search, X, Sparkles, Leaf, Zap } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export type MenuFilterType = 'all' | 'especialidade' | 'novidade' | 'picante' | 'vegetariano';

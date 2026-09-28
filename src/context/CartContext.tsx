@@ -1,8 +1,15 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useMemo,
+} from 'react';
 import { Product, CartItem, Order, OrderStatus } from '@/types/restaurant';
-import { mockRestaurant } from '@/data/mockRestaurant';
+import { createOrder } from '@/actions/orders';
 
 interface CartContextType {
   items: CartItem[];
@@ -16,11 +23,14 @@ interface CartContextType {
   total: number;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
+  restaurantSlug: string | null;
+  setRestaurantSlug: (slug: string | null) => void;
   selectedTableNumber: number | null;
   setSelectedTableNumber: (tableNumber: number | null) => void;
   isTableLocked: boolean;
   setIsTableLocked: (locked: boolean) => void;
   submitOrder: (customerNotes?: string) => Promise<Order>;
+  isSubmitting: boolean;
   activeOrder: Order | null;
   setActiveOrder: (order: Order | null) => void;
   isOrderSuccessModalOpen: boolean;
@@ -34,33 +44,48 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 const STORAGE_KEY = 'gulas_cart_state_v1';
 
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [selectedTableNumber, setSelectedTableNumber] = useState<number | null>(4); // Default to table 4 for easy testing
-  const [isTableLocked, setIsTableLocked] = useState(false);
-  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
-  const [isOrderSuccessModalOpen, setIsOrderSuccessModalOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Load from session/localStorage once client is mounted
-  useEffect(() => {
+  const [items, setItems] = useState<CartItem[]>(() => {
+    if (typeof window === 'undefined') return [];
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed.items)) {
-          setItems(parsed.items);
-        }
-        if (typeof parsed.selectedTableNumber === 'number') {
-          setSelectedTableNumber(parsed.selectedTableNumber);
+          return parsed.items;
         }
       }
     } catch {
-      // ignore storage access errors
+      // ignore
     }
-  }, []);
+    return [];
+  });
 
-  // Save changes
+  const [restaurantSlug, setRestaurantSlug] = useState<string | null>(null);
+
+  const [selectedTableNumber, setSelectedTableNumber] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return 4;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.selectedTableNumber === 'number') {
+          return parsed.selectedTableNumber;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return 4;
+  });
+
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isTableLocked, setIsTableLocked] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+  const [isOrderSuccessModalOpen, setIsOrderSuccessModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Save changes to localStorage
   useEffect(() => {
     try {
       localStorage.setItem(
@@ -142,34 +167,72 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const total = subtotal;
 
   const submitOrder = async (customerNotes?: string): Promise<Order> => {
+    if (isSubmitting) {
+      throw new Error('Já existe um pedido em processamento.');
+    }
     if (items.length === 0) {
       throw new Error('O carrinho está vazio');
     }
     if (!selectedTableNumber) {
       throw new Error('Por favor selecione o número da mesa');
     }
+    if (!restaurantSlug) {
+      throw new Error('Restaurante não identificado');
+    }
 
-    // In this first milestone, we generate a client-simulated order and trigger the confirmation
-    const orderNumber = Math.floor(100 + Math.random() * 900);
-    const newOrder: Order = {
-      id: `ord_${orderNumber}`,
-      restaurantId: mockRestaurant.id,
-      tableNumber: selectedTableNumber,
-      tableName: `Mesa ${selectedTableNumber}`,
-      items: [...items],
-      subtotal,
-      total,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      customerNotes,
-    };
+    setIsSubmitting(true);
 
-    setActiveOrder(newOrder);
-    setIsOrderSuccessModalOpen(true);
-    setIsCartOpen(false);
-    clearCart();
+    try {
+      // 1. Converter CartItems para payload seguro (apenas productId, quantity, notes)
+      const payloadItems = items.map((item) => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+        notes: item.notes ? item.notes.trim() : null,
+      }));
 
-    return newOrder;
+      // 2. Chamar a Server Action
+      const result = await createOrder({
+        restaurantSlug,
+        tableNumber: selectedTableNumber,
+        customerNotes: customerNotes?.trim() || null,
+        items: payloadItems,
+      });
+
+      // 3. Tratar erro da Server Action
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+
+      const orderData = result.data;
+
+      // 4. Mapear resultado real para o estado Order
+      const newOrder: Order = {
+        id: orderData.orderId,
+        orderNumber: orderData.orderNumber,
+        restaurantId: orderData.restaurantId,
+        restaurantSlug: orderData.restaurantSlug,
+        restaurantName: orderData.restaurantName,
+        tableId: orderData.tableId,
+        tableNumber: orderData.tableNumber,
+        tableName: orderData.tableName || `Mesa ${orderData.tableNumber}`,
+        items: [...items],
+        subtotal: orderData.subtotal,
+        total: orderData.total,
+        status: (orderData.status as OrderStatus) || 'pending',
+        createdAt: orderData.createdAt,
+        customerNotes: orderData.customerNotes || undefined,
+      };
+
+      // 5. Atualizar estado e limpar carrinho em sucesso
+      setActiveOrder(newOrder);
+      setIsOrderSuccessModalOpen(true);
+      setIsCartOpen(false);
+      clearCart();
+
+      return newOrder;
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -186,11 +249,14 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         total,
         isCartOpen,
         setIsCartOpen,
+        restaurantSlug,
+        setRestaurantSlug,
         selectedTableNumber,
         setSelectedTableNumber,
         isTableLocked,
         setIsTableLocked,
         submitOrder,
+        isSubmitting,
         activeOrder,
         setActiveOrder,
         isOrderSuccessModalOpen,

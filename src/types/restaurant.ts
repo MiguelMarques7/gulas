@@ -82,7 +82,11 @@ export interface CartItem {
 
 export interface Order {
   id: string;
-  restaurantId: string;
+  orderNumber?: number;
+  restaurantId?: string;
+  restaurantSlug?: string;
+  restaurantName?: string;
+  tableId?: string;
   tableNumber: number;
   tableName?: string;
   items: CartItem[];
@@ -92,3 +96,4 @@ export interface Order {
   createdAt: string;
   customerNotes?: string;
 }
+

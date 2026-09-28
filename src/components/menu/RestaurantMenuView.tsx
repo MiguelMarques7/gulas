@@ -12,7 +12,7 @@ import { FloatingCartBar } from '@/components/menu/FloatingCartBar';
 import { OrderConfirmationModal } from '@/components/menu/OrderConfirmationModal';
 import { Toast } from '@/components/ui/Toast';
 import { useCart } from '@/context/CartContext';
-import { Utensils, Sparkles } from 'lucide-react';
+import { Utensils } from 'lucide-react';
 
 interface RestaurantMenuViewProps {
   restaurant: Restaurant;
@@ -29,7 +29,7 @@ export const RestaurantMenuView: React.FC<RestaurantMenuViewProps> = ({
   initialTableNumber,
   lockTable = false,
 }) => {
-  const { setSelectedTableNumber, setIsTableLocked } = useCart();
+  const { setSelectedTableNumber, setIsTableLocked, setRestaurantSlug } = useCart();
   const [activeCategoryId, setActiveCategoryId] = useState<string>(categories[0]?.id || '');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<MenuFilterType>('all');
@@ -37,13 +37,16 @@ export const RestaurantMenuView: React.FC<RestaurantMenuViewProps> = ({
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   useEffect(() => {
+    if (restaurant.slug) {
+      setRestaurantSlug(restaurant.slug);
+    }
     if (initialTableNumber) {
       setSelectedTableNumber(initialTableNumber);
       if (lockTable) {
         setIsTableLocked(true);
       }
     }
-  }, [initialTableNumber, lockTable, setSelectedTableNumber, setIsTableLocked]);
+  }, [restaurant.slug, initialTableNumber, lockTable, setRestaurantSlug, setSelectedTableNumber, setIsTableLocked]);
 
   // Handle open product modal
   const handleOpenProductDetails = (product: Product) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { Product } from '@/types/restaurant';
 import { formatCurrency } from '@/data/mockRestaurant';
@@ -22,14 +22,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const { addItem, items } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
+  const [prevProductId, setPrevProductId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (product) {
-      const existing = items.find((i) => i.product.id === product.id);
-      setQuantity(existing ? existing.quantity : 1);
-      setNotes(existing?.notes || '');
-    }
-  }, [product, items, isOpen]);
+  if (product && product.id !== prevProductId) {
+    setPrevProductId(product.id);
+    const existing = items.find((i) => i.product.id === product.id);
+    setQuantity(existing ? existing.quantity : 1);
+    setNotes(existing?.notes || '');
+  }
 
   if (!isOpen || !product) return null;
 

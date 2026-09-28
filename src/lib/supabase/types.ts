@@ -70,6 +70,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       profiles: {
         Row: {
@@ -96,6 +97,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       categories: {
         Row: {
@@ -137,6 +139,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       products: {
         Row: {
@@ -202,6 +205,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       tables: {
         Row: {
@@ -234,6 +238,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       restaurant_counters: {
         Row: {
@@ -251,6 +256,7 @@ export interface Database {
           last_order_number?: number;
           updated_at?: string;
         };
+        Relationships: [];
       };
       orders: {
         Row: {
@@ -292,6 +298,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       order_items: {
         Row: {
@@ -327,6 +334,7 @@ export interface Database {
           notes?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
     };
     Functions: {
@@ -336,6 +344,28 @@ export interface Database {
         };
         Returns: number;
       };
+      create_order_atomic: {
+        Args: {
+          p_restaurant_slug: string;
+          p_table_number: number;
+          p_customer_notes: string | null;
+          p_items: {
+            product_id: string;
+            quantity: number;
+            notes: string | null;
+          }[];
+        };
+        Returns: Json;
+      };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
     };
   };
 }

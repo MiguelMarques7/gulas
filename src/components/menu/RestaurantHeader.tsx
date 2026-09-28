@@ -4,7 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import { Restaurant } from '@/types/restaurant';
 import { useCart } from '@/context/CartContext';
-import { ShoppingBag, UtensilsCrossed, MapPin, Clock } from 'lucide-react';
+import { ShoppingBag, UtensilsCrossed } from 'lucide-react';
 
 interface RestaurantHeaderProps {
   restaurant: Restaurant;
