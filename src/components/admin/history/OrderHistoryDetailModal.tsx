@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ManagedOrder } from '@/actions/order-management';
 import { OrderStatusBadge } from '../orders/OrderStatusBadge';
 import { OrderItemsList } from '../orders/OrderItemsList';
@@ -13,6 +13,19 @@ export function OrderHistoryDetailModal({
   order,
   onClose,
 }: OrderHistoryDetailModalProps) {
+  useEffect(() => {
+    if (!order) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [order, onClose]);
+
   if (!order) return null;
 
   const formatDateTime = (dateString: string) => {
@@ -38,6 +51,9 @@ export function OrderHistoryDetailModal({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="history-order-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={onClose}
     >
@@ -49,7 +65,10 @@ export function OrderHistoryDetailModal({
         <div className="p-5 border-b border-zinc-200/80 flex items-start justify-between bg-zinc-50/50">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-black text-gulas-dark tracking-tight">
+              <span
+                id="history-order-modal-title"
+                className="text-2xl font-black text-gulas-dark tracking-tight"
+              >
                 #{order.orderNumber}
               </span>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-zinc-900 text-white text-xs font-bold uppercase">
@@ -67,7 +86,7 @@ export function OrderHistoryDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-zinc-100 text-zinc-600 hover:bg-zinc-200 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-zinc-100 text-zinc-600 hover:bg-zinc-200 focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:outline-none flex items-center justify-center transition-colors cursor-pointer"
             aria-label="Fechar modal"
           >
             <X className="w-4 h-4" />
@@ -125,7 +144,7 @@ export function OrderHistoryDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-gulas-dark hover:bg-black text-white text-xs font-bold transition-all cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-gulas-dark hover:bg-black text-white text-xs font-bold focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:outline-none transition-all cursor-pointer"
           >
             Fechar
           </button>

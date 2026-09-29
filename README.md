@@ -48,7 +48,8 @@ A plataforma foi desenhada para resolver os principais desafios operacionais e d
 | **M4.3** | Kitchen Display System (KDS) UI | Concluído | Dashboard interativo de cozinha/sala com contadores operacionais (KPIs), cartões detalhados e transições de estado contextuais. |
 | **M4.4** | Supabase Realtime KDS | Concluído | Subscrição em tempo real com autenticação JWT prévia, padrão *Signal & Fetch*, coalescing/debounce (300ms) e `REPLICA IDENTITY FULL`. |
 | **M4.5.1** | Order History & Details | Concluído | Histórico de pedidos arquivados (`completed`/`cancelled`), modal com discriminação total de artigos e navegação integrada no cabeçalho. |
-| **M4.5.2** | Advanced History & Filters | Planeado | Filtros por data, intervalo temporal, mesa e exportação de relatórios. |
+| **M4.5.2** | History Search & Multi-Filters | Concluído | Pesquisa instantânea por número de pedido e filtros multicritério combinados (estado, mesa dinâmica e período temporal). |
+| **M4.5.3** | Admin UX & Polish | Concluído | Confirmação explícita de cancelamento, feedback de loading isolado por cartão, destaque visual para novos pedidos e acessibilidade total por teclado. |
 | **M5** | Backoffice & Analytics | Planeado | Gestão de ementa, controlo de stock/disponibilidade e métricas financeiras. |
 
 ---

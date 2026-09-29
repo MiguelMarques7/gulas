@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useTransition } from 'react';
+import React, { useState, useCallback, useTransition, useRef } from 'react';
 import {
   ManagedOrder,
   getActiveOrders,
@@ -40,6 +40,11 @@ export function OrderDashboard({
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date());
   const [updatingMap, setUpdatingMap] = useState<Record<string, boolean>>({});
   const [orderErrorMap, setOrderErrorMap] = useState<Record<string, string | null>>({});
+  const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
+
+  const previousOrderIdsRef = useRef<Set<string>>(
+    new Set(initialOrders.map((o) => o.id))
+  );
 
   const [isRefreshing, startRefreshTransition] = useTransition();
 
@@ -51,6 +56,29 @@ export function OrderDashboard({
       if (!result.success) {
         setDashboardError(result.error.message);
       } else {
+        // Detect newly arrived orders for visual highlight
+        const currentIds = previousOrderIdsRef.current;
+        const newlyAdded = new Set<string>();
+
+        result.data.forEach((o) => {
+          if (!currentIds.has(o.id)) {
+            newlyAdded.add(o.id);
+          }
+        });
+
+        if (newlyAdded.size > 0) {
+          setNewOrderIds((prev) => new Set([...prev, ...newlyAdded]));
+          // Remove highlight after 10 seconds
+          setTimeout(() => {
+            setNewOrderIds((prev) => {
+              const updated = new Set(prev);
+              newlyAdded.forEach((id) => updated.delete(id));
+              return updated;
+            });
+          }, 10000);
+        }
+
+        previousOrderIdsRef.current = new Set(result.data.map((o) => o.id));
         setOrders(result.data);
         setLastRefreshedAt(new Date());
       }
@@ -94,7 +122,14 @@ export function OrderDashboard({
         return;
       }
 
-      // 2. If status is terminal ('completed' or 'cancelled'), remove from active list
+      // 2. Remove highlight if active
+      setNewOrderIds((prev) => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+
+      // 3. If status is terminal ('completed' or 'cancelled'), remove from active list
       if (nextStatus === 'completed' || nextStatus === 'cancelled') {
         setOrders((prev) => prev.filter((o) => o.id !== orderId));
       } else {
@@ -180,7 +215,7 @@ export function OrderDashboard({
             type="button"
             disabled={isLoading || isRefreshing}
             onClick={handleManualRefresh}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gulas-gray-200 hover:bg-gulas-gray-100 text-gulas-dark text-xs sm:text-sm font-bold shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gulas-gray-200 hover:bg-gulas-gray-100 text-gulas-dark text-xs sm:text-sm font-bold shadow-xs transition-all disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:outline-none cursor-pointer"
             aria-label="Atualizar lista de pedidos"
           >
             <RotateCcw
@@ -268,7 +303,10 @@ export function OrderDashboard({
           </p>
         </div>
       ) : dashboardError ? (
-        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 sm:p-8 text-center max-w-lg mx-auto space-y-3">
+        <div
+          role="alert"
+          className="bg-rose-50 border border-rose-200 rounded-2xl p-6 sm:p-8 text-center max-w-lg mx-auto space-y-3"
+        >
           <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
             <AlertCircle className="w-6 h-6" />
           </div>
@@ -279,7 +317,7 @@ export function OrderDashboard({
           <button
             type="button"
             onClick={fetchOrders}
-            className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all cursor-pointer"
+            className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold focus-visible:ring-2 focus-visible:ring-rose-800 focus-visible:outline-none transition-all cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Tentar Novamente</span>
@@ -291,7 +329,7 @@ export function OrderDashboard({
             <Inbox className="w-8 h-8 text-gulas-gray-400" />
           </div>
           <h3 className="text-lg font-bold text-gulas-dark">
-            Não existem pedidos ativos
+            Não existem pedidos ativos.
           </h3>
           <p className="text-xs sm:text-sm text-gulas-gray-500 max-w-xs mx-auto leading-relaxed">
             Assim que os clientes submeterem pedidos a partir do menu digital das
@@ -300,7 +338,7 @@ export function OrderDashboard({
           <button
             type="button"
             onClick={handleManualRefresh}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold transition-all cursor-pointer"
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:outline-none transition-all cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Verificar Novos Pedidos</span>
@@ -313,8 +351,12 @@ export function OrderDashboard({
             <OrderCard
               key={order.id}
               order={order}
+              isNew={newOrderIds.has(order.id)}
               isUpdating={Boolean(updatingMap[order.id])}
               error={orderErrorMap[order.id]}
+              onClearError={() =>
+                setOrderErrorMap((prev) => ({ ...prev, [order.id]: null }))
+              }
               onUpdateStatus={handleUpdateStatus}
             />
           ))}

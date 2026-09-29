@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useTransition } from 'react';
+import React, { useState, useMemo, useCallback, useTransition } from 'react';
 import { ManagedOrder, getOrderHistory } from '@/actions/order-management';
 import { OrderStatusBadge } from '../orders/OrderStatusBadge';
 import { OrderHistoryDetailModal } from './OrderHistoryDetailModal';
@@ -13,6 +13,9 @@ import {
   AlertCircle,
   Inbox,
   Calendar,
+  Search,
+  X,
+  Filter,
 } from 'lucide-react';
 
 interface OrderHistoryViewProps {
@@ -20,6 +23,9 @@ interface OrderHistoryViewProps {
   restaurantSlug: string;
   initialOrders: ManagedOrder[];
 }
+
+type PeriodOption = 'all' | 'today' | '7days' | '30days';
+type StatusOption = 'all' | 'completed' | 'cancelled';
 
 export function OrderHistoryView({
   restaurantName,
@@ -31,6 +37,12 @@ export function OrderHistoryView({
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<ManagedOrder | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date>(new Date());
+
+  // Filter States (M4.5.2)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusOption>('all');
+  const [tableFilter, setTableFilter] = useState<string>('all');
+  const [periodFilter, setPeriodFilter] = useState<PeriodOption>('all');
 
   const [isRefreshing, startRefreshTransition] = useTransition();
 
@@ -57,6 +69,85 @@ export function OrderHistoryView({
     });
   };
 
+  // Dynamic tables list from loaded orders
+  const availableTables = useMemo(() => {
+    const tableSet = new Set<number>();
+    orders.forEach((o) => tableSet.add(o.tableNumber));
+    return Array.from(tableSet).sort((a, b) => a - b);
+  }, [orders]);
+
+  // Combined client-side filtering
+  const filteredOrders = useMemo(() => {
+    const referenceTime = lastRefreshedAt.getTime();
+    const startOfToday = new Date(lastRefreshedAt);
+    startOfToday.setHours(0, 0, 0, 0);
+    const startOfTodayMs = startOfToday.getTime();
+    const sevenDaysAgoMs = referenceTime - 7 * 24 * 60 * 60 * 1000;
+    const thirtyDaysAgoMs = referenceTime - 30 * 24 * 60 * 60 * 1000;
+    const cleanQuery = searchQuery.replace('#', '').trim().toLowerCase();
+
+    return orders.filter((order) => {
+      // 1. Search Query (order number, space/hash tolerant)
+      if (cleanQuery) {
+        const orderNumStr = String(order.orderNumber);
+        if (!orderNumStr.includes(cleanQuery)) {
+          return false;
+        }
+      }
+
+      // 2. Status Filter
+      if (statusFilter !== 'all') {
+        if (order.status !== statusFilter) {
+          return false;
+        }
+      }
+
+      // 3. Table Filter
+      if (tableFilter !== 'all') {
+        if (order.tableNumber !== Number(tableFilter)) {
+          return false;
+        }
+      }
+
+      // 4. Period Filter
+      if (periodFilter !== 'all') {
+        const orderTimestamp = new Date(order.createdAt).getTime();
+
+        if (periodFilter === 'today' && orderTimestamp < startOfTodayMs) {
+          return false;
+        }
+        if (periodFilter === '7days' && orderTimestamp < sevenDaysAgoMs) {
+          return false;
+        }
+        if (periodFilter === '30days' && orderTimestamp < thirtyDaysAgoMs) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [
+    orders,
+    searchQuery,
+    statusFilter,
+    tableFilter,
+    periodFilter,
+    lastRefreshedAt,
+  ]);
+
+  const hasActiveFilters =
+    searchQuery.trim() !== '' ||
+    statusFilter !== 'all' ||
+    tableFilter !== 'all' ||
+    periodFilter !== 'all';
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setTableFilter('all');
+    setPeriodFilter('all');
+  };
+
   const formatDateTime = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -78,6 +169,7 @@ export function OrderHistoryView({
       currency: 'EUR',
     }).format(price);
 
+  // Global Loaded Metrics
   const completedCount = orders.filter((o) => o.status === 'completed').length;
   const cancelledCount = orders.filter((o) => o.status === 'cancelled').length;
   const totalHistoryCount = orders.length;
@@ -128,7 +220,7 @@ export function OrderHistoryView({
         </div>
       </div>
 
-      {/* KPI Summary Cards */}
+      {/* KPI Summary Cards (Representing the full loaded dataset) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {/* Total Finalizados */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gulas-gray-200 shadow-xs flex items-center justify-between">
@@ -176,6 +268,101 @@ export function OrderHistoryView({
         </div>
       </div>
 
+      {/* Filter and Search Bar (M4.5.2) */}
+      <div className="bg-white p-4 rounded-2xl border border-gulas-gray-200 shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          {/* 1. Search by Order Number */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-gulas-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Pesquisar pedido (ex: 8)..."
+              className="w-full pl-9 pr-9 py-2 bg-gulas-gray-100/80 border border-gulas-gray-200 rounded-xl text-xs sm:text-sm text-gulas-dark placeholder-gulas-gray-400 focus:outline-none focus:border-zinc-900 focus:bg-white transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gulas-gray-400 hover:text-gulas-dark transition-colors cursor-pointer"
+                aria-label="Limpar pesquisa"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* 2. Select Status */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusOption)}
+              className="px-3 py-2 bg-gulas-gray-100/80 border border-gulas-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gulas-dark focus:outline-none focus:border-zinc-900 focus:bg-white transition-all cursor-pointer flex-1 sm:flex-none"
+              aria-label="Filtrar por estado"
+            >
+              <option value="all">Todos os Estados</option>
+              <option value="completed">Concluídos</option>
+              <option value="cancelled">Cancelados</option>
+            </select>
+
+            {/* 3. Select Table (Dynamic) */}
+            <select
+              value={tableFilter}
+              onChange={(e) => setTableFilter(e.target.value)}
+              className="px-3 py-2 bg-gulas-gray-100/80 border border-gulas-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gulas-dark focus:outline-none focus:border-zinc-900 focus:bg-white transition-all cursor-pointer flex-1 sm:flex-none"
+              aria-label="Filtrar por mesa"
+            >
+              <option value="all">Todas as Mesas</option>
+              {availableTables.map((num) => (
+                <option key={num} value={String(num)}>
+                  Mesa {num}
+                </option>
+              ))}
+            </select>
+
+            {/* 4. Select Period */}
+            <select
+              value={periodFilter}
+              onChange={(e) => setPeriodFilter(e.target.value as PeriodOption)}
+              className="px-3 py-2 bg-gulas-gray-100/80 border border-gulas-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gulas-dark focus:outline-none focus:border-zinc-900 focus:bg-white transition-all cursor-pointer flex-1 sm:flex-none"
+              aria-label="Filtrar por período"
+            >
+              <option value="all">Todos os Períodos</option>
+              <option value="today">Hoje</option>
+              <option value="7days">Últimos 7 dias</option>
+              <option value="30days">Últimos 30 dias</option>
+            </select>
+
+            {/* Reset Button (Only visible if active filters) */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-gulas-dark text-xs sm:text-sm font-bold transition-all cursor-pointer flex-shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Limpar filtros</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Filter Results Summary */}
+        <div className="flex items-center justify-between text-xs text-gulas-gray-500 pt-1">
+          <span className="flex items-center gap-1 font-medium">
+            <Filter className="w-3 h-3 text-gulas-gray-400" />
+            A mostrar <strong className="text-gulas-dark font-bold">{filteredOrders.length}</strong> de{' '}
+            <strong className="text-gulas-dark font-bold">{orders.length}</strong> pedidos
+          </span>
+          {hasActiveFilters && (
+            <span className="text-xs text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60">
+              Filtros ativos
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Main Content Area */}
       {error ? (
         <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 sm:p-8 text-center max-w-lg mx-auto space-y-3">
@@ -215,6 +402,27 @@ export function OrderHistoryView({
             <span>Atualizar Lista</span>
           </button>
         </div>
+      ) : filteredOrders.length === 0 ? (
+        /* Empty State for Filters */
+        <div className="bg-white border border-gulas-gray-200 rounded-2xl p-10 sm:p-12 text-center max-w-lg mx-auto shadow-xs space-y-3">
+          <div className="w-14 h-14 bg-zinc-100 text-zinc-500 rounded-2xl flex items-center justify-center mx-auto">
+            <Search className="w-6 h-6 text-zinc-400" />
+          </div>
+          <h3 className="text-base sm:text-lg font-bold text-gulas-dark">
+            Nenhum pedido corresponde aos filtros
+          </h3>
+          <p className="text-xs sm:text-sm text-gulas-gray-500 max-w-xs mx-auto leading-relaxed">
+            Tenta ajustar o termo de pesquisa, o estado, a mesa ou o período selecionado.
+          </p>
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-bold transition-all cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Limpar Todos os Filtros</span>
+          </button>
+        </div>
       ) : (
         /* Orders List & Table */
         <div className="bg-white rounded-2xl border border-gulas-gray-200 shadow-xs overflow-hidden">
@@ -247,7 +455,7 @@ export function OrderHistoryView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gulas-gray-100">
-                {orders.map((order) => {
+                {filteredOrders.map((order) => {
                   const totalItemsCount = order.items.reduce(
                     (acc, item) => acc + item.quantity,
                     0
@@ -297,7 +505,7 @@ export function OrderHistoryView({
 
           {/* Mobile Card List View */}
           <div className="md:hidden divide-y divide-gulas-gray-100">
-            {orders.map((order) => {
+            {filteredOrders.map((order) => {
               const totalItemsCount = order.items.reduce(
                 (acc, item) => acc + item.quantity,
                 0
